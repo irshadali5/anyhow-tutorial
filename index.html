@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>anyhow — Rust Error Handling Tutorial</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#21262d;--bg4:#30363d;
+  --border:#30363d;--border2:#3d444d;
+  --text:#e6edf3;--text2:#8b949e;--text3:#6e7681;
+  --rust:#e05c4b;--orange:#f0883e;--green:#3fb950;
+  --blue:#58a6ff;--purple:#d2a8ff;--yellow:#e3b341;
+  --teal:#39d353;--cyan:#79c0ff;
+  --font-mono:'JetBrains Mono',ui-monospace,'Cascadia Code','Fira Code',monospace;
+  --font-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --radius:6px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-sans);font-size:15px;line-height:1.7}
+.layout{display:flex;height:100vh;max-width:1100px;margin:0 auto}
+.sidebar{width:220px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);padding:1rem 0;position:sticky;top:0;height:100vh;overflow-y:auto;font-size:13px}
+.sidebar-title{padding:.5rem 1rem .75rem;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);font-weight:600}
+.nav-group{margin-bottom:.25rem}
+.nav-group-label{padding:.25rem 1rem;font-size:11px;color:var(--text3);letter-spacing:.05em;text-transform:uppercase;margin-top:.75rem}
+.nav-item{display:block;padding:.3rem 1rem .3rem 1.25rem;color:var(--text2);cursor:pointer;border-left:2px solid transparent;text-decoration:none;transition:color .15s,border-color .15s,background .15s}
+.nav-item:hover{color:var(--text);background:var(--bg3)}
+.nav-item.active{color:var(--blue);border-left-color:var(--blue);background:rgba(88,166,255,.07)}
+.nav-badge{display:inline-block;font-size:10px;padding:1px 6px;border-radius:10px;margin-left:6px;vertical-align:middle;font-weight:600}
+.badge-beginner{background:rgba(63,185,80,.15);color:var(--green)}
+.badge-mid{background:rgba(240,136,62,.15);color:var(--orange)}
+.badge-advanced{background:rgba(224,92,75,.15);color:var(--rust)}
+.main{flex:1;padding:2rem 2.5rem;overflow-y:auto;min-width:0}
+.section{display:none;animation:fadein .2s ease}
+.section.active{display:block}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+h1{font-size:26px;font-weight:700;margin-bottom:.4rem;line-height:1.3;color:var(--text)}
+h2{font-size:19px;font-weight:600;margin:2rem 0 .75rem;color:var(--text)}
+h3{font-size:15px;font-weight:600;margin:1.5rem 0 .5rem;color:var(--text2)}
+p{margin:.5rem 0 1rem;color:var(--text2);line-height:1.75}
+.subtitle{color:var(--text3);font-size:14px;margin-bottom:1.5rem}
+.callout{border-left:3px solid;padding:.75rem 1rem;border-radius:0 var(--radius) var(--radius) 0;margin:1rem 0;font-size:14px}
+.callout-info{border-color:var(--blue);background:rgba(88,166,255,.08);color:var(--cyan)}
+.callout-tip{border-color:var(--green);background:rgba(63,185,80,.08);color:var(--green)}
+.callout-warn{border-color:var(--yellow);background:rgba(227,179,65,.08);color:var(--yellow)}
+.callout-err{border-color:var(--rust);background:rgba(224,92,75,.08);color:var(--rust)}
+.callout strong{display:block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:.25rem;opacity:.7}
+pre{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow-x:auto;margin:1rem 0;position:relative}
+pre code{display:block;padding:1rem 1.25rem;font-family:var(--font-mono);font-size:13px;line-height:1.8;color:var(--text)}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:.5rem 1rem;border-bottom:1px solid var(--border);background:var(--bg3);border-radius:var(--radius) var(--radius) 0 0}
+.code-lang{font-size:11px;color:var(--text3);font-family:var(--font-mono);text-transform:uppercase;letter-spacing:.05em}
+.copy-btn{font-size:11px;color:var(--text3);cursor:pointer;background:none;border:1px solid var(--border);border-radius:4px;padding:2px 8px;transition:color .15s,border-color .15s}
+.copy-btn:hover{color:var(--blue);border-color:var(--blue)}
+.kw{color:var(--purple)} .fn{color:var(--blue)} .ty{color:var(--orange)} .st{color:var(--green)} .cm{color:var(--text3);font-style:italic} .nu{color:var(--teal)} .mac{color:var(--rust)} .op{color:var(--text2)} .lt{color:var(--yellow)}
+.pill{display:inline-block;font-size:12px;padding:2px 8px;border-radius:12px;font-family:var(--font-mono);background:var(--bg3);border:1px solid var(--border);color:var(--orange);margin:0 2px}
+.comparison{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+.cmp-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.cmp-box.bad{border-color:rgba(224,92,75,.4)}
+.cmp-box.good{border-color:rgba(63,185,80,.4)}
+.cmp-label{font-size:11px;padding:.4rem .75rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+.cmp-box.bad .cmp-label{background:rgba(224,92,75,.1);color:var(--rust)}
+.cmp-box.good .cmp-label{background:rgba(63,185,80,.1);color:var(--green)}
+.cmp-box pre{margin:0;border:none;border-radius:0}
+table{width:100%;border-collapse:collapse;font-size:13px;margin:1rem 0}
+th{background:var(--bg3);padding:.5rem .75rem;text-align:left;color:var(--text2);font-size:11px;letter-spacing:.05em;text-transform:uppercase;border-bottom:1px solid var(--border)}
+td{padding:.5rem .75rem;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+td:first-child{font-family:var(--font-mono);color:var(--orange);white-space:nowrap}
+.toc-mini{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem 1rem;margin:1rem 0 1.5rem;font-size:13px}
+.toc-mini p{margin:0 0 .5rem;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.05em}
+.toc-mini a{color:var(--text2);text-decoration:none;display:block;padding:2px 0;cursor:pointer}
+.toc-mini a:hover{color:var(--blue)}
+.hero-bar{background:linear-gradient(135deg,rgba(224,92,75,.12),rgba(88,166,255,.08));border:1px solid rgba(224,92,75,.25);border-radius:var(--radius);padding:1.25rem 1.5rem;margin-bottom:2rem}
+.hero-bar h1{margin-bottom:.25rem}
+.breadcrumb{font-size:13px;color:var(--text3);margin-bottom:2rem}
+.breadcrumb span{color:var(--text3)}
+.next-btn{display:inline-flex;align-items:center;gap:6px;margin-top:2rem;padding:.5rem 1.25rem;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);cursor:pointer;font-size:14px;transition:all .15s}
+.next-btn:hover{border-color:var(--blue);color:var(--blue)}
+hr{border:none;border-top:1px solid var(--border);margin:2rem 0}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="sidebar">
+  <div class="sidebar-title">📦 anyhow</div>
+  <div class="nav-group">
+    <div class="nav-group-label">Getting started</div>
+    <a class="nav-item active" onclick="nav('intro',this)">Introduction <span class="nav-badge badge-beginner">beginner</span></a>
+    <a class="nav-item" onclick="nav('setup',this)">Setup &amp; Cargo.toml</a>
+    <a class="nav-item" onclick="nav('first-error',this)">Your first error</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">Core concepts</div>
+    <a class="nav-item" onclick="nav('result-type',this)">The Result type</a>
+    <a class="nav-item" onclick="nav('question-mark',this)">? operator</a>
+    <a class="nav-item" onclick="nav('context',this)">Adding context</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">Intermediate <span class="nav-badge badge-mid">mid</span></div>
+    <a class="nav-item" onclick="nav('downcasting',this)">Downcasting errors</a>
+    <a class="nav-item" onclick="nav('custom-errors',this)">Custom error types</a>
+    <a class="nav-item" onclick="nav('chaining',this)">Error chaining</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">Advanced <span class="nav-badge badge-advanced">advanced</span></div>
+    <a class="nav-item" onclick="nav('thiserror',this)">anyhow + thiserror</a>
+    <a class="nav-item" onclick="nav('libs-vs-bins',this)">Libs vs binaries</a>
+    <a class="nav-item" onclick="nav('patterns',this)">Real-world patterns</a>
+  </div>
+  <div class="nav-group">
+    <div class="nav-group-label">Reference</div>
+    <a class="nav-item" onclick="nav('api-ref',this)">API cheatsheet</a>
+  </div>
+</nav>
+
+<main class="main">
+
+<!-- INTRO -->
+<div id="s-intro" class="section active">
+  <div class="hero-bar">
+    <h1>anyhow — Rust error handling made easy</h1>
+    <div class="subtitle">A complete guide from zero to production-ready error handling</div>
+  </div>
+  <p>If you've hit Rust's error handling and felt confused by the jungle of <span class="pill">Box&lt;dyn Error&gt;</span>, <span class="pill">impl Error</span>, and custom enums — <strong>anyhow</strong> is the crate that clears all of that up for application code.</p>
+
+  <div class="callout callout-info"><strong>What is anyhow?</strong>A crate by David Tolnay that gives you a single <span class="pill">anyhow::Error</span> type that can hold <em>any</em> error, plus helpers to add human-readable context as errors bubble up. Zero boilerplate.</div>
+
+  <h2>Why does Rust error handling feel hard?</h2>
+  <p>In Rust, every function that can fail returns <span class="pill">Result&lt;T, E&gt;</span>. The problem in real applications is that you call many functions which return <em>different</em> E types — <span class="pill">io::Error</span>, <span class="pill">serde_json::Error</span>, <span class="pill">reqwest::Error</span>... and they don't automatically compose.</p>
+  <p>Without a crate like anyhow, you'd need to manually convert each error type, write From implementations, or use <span class="pill">Box&lt;dyn std::error::Error&gt;</span> everywhere. anyhow wraps all of that automatically.</p>
+
+  <h2>What you'll learn</h2>
+  <div class="toc-mini">
+    <p>In this guide</p>
+    <a onclick="nav('setup',null)">→ Setup: adding anyhow to your project</a>
+    <a onclick="nav('first-error',null)">→ Creating and returning your first error</a>
+    <a onclick="nav('result-type',null)">→ anyhow::Result vs std::result::Result</a>
+    <a onclick="nav('question-mark',null)">→ The ? operator and automatic conversion</a>
+    <a onclick="nav('context',null)">→ Adding context to errors with .context()</a>
+    <a onclick="nav('downcasting',null)">→ Recovering specific errors via downcasting</a>
+    <a onclick="nav('thiserror',null)">→ Pairing with thiserror for custom error types</a>
+    <a onclick="nav('libs-vs-bins',null)">→ When NOT to use anyhow (library crates)</a>
+    <a onclick="nav('patterns',null)">→ Production patterns and real-world usage</a>
+  </div>
+
+  <button class="next-btn" onclick="nav('setup',null)">Start: Setup &amp; Cargo.toml →</button>
+</div>
+
+<!-- SETUP -->
+<div id="s-setup" class="section">
+  <div class="breadcrumb">Getting started › <span>Setup &amp; Cargo.toml</span></div>
+  <h1>Setup</h1>
+  <p>Add anyhow to your <code style="font-family:var(--font-mono);color:var(--orange)">Cargo.toml</code>. That's the entire setup.</p>
+  <div class="code-header"><span class="code-lang">toml</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="cm"># Cargo.toml</span>
+[dependencies]
+<span class="ty">anyhow</span> = <span class="st">"1"</span></code></pre>
+
+  <p>Then in your Rust file, bring the prelude into scope:</p>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">use</span> anyhow::{<span class="ty">Result</span>, <span class="ty">Context</span>, <span class="mac">anyhow</span>, <span class="mac">bail</span>};</code></pre>
+
+  <div class="callout callout-tip"><strong>Tip</strong>Most of the time, <span class="pill">use anyhow::Result</span> is all you need. Add <span class="pill">Context</span>, <span class="pill">bail!</span>, and <span class="pill">anyhow!</span> as you need them.</div>
+
+  <h2>Feature flags</h2>
+  <table>
+    <tr><th>Feature</th><th>Description</th><th>Default?</th></tr>
+    <tr><td>std</td><td>Enables std support (almost always want this)</td><td>✅ yes</td></tr>
+    <tr><td>backtrace</td><td>Capture backtraces automatically</td><td>❌ no</td></tr>
+  </table>
+
+  <p>Enable backtraces in development by setting the env var <span class="pill">RUST_BACKTRACE=1</span>. anyhow captures them automatically when available — no code changes needed.</p>
+
+  <button class="next-btn" onclick="nav('first-error',null)">Next: Your first error →</button>
+</div>
+
+<!-- FIRST ERROR -->
+<div id="s-first-error" class="section">
+  <div class="breadcrumb">Getting started › <span>Your first error</span></div>
+  <h1>Your first error</h1>
+  <p>There are three ways to create an anyhow error. Let's see each one.</p>
+
+  <h2>1. anyhow! macro — create an error from a message</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">use</span> anyhow::{<span class="ty">Result</span>, <span class="mac">anyhow</span>};
+
+<span class="kw">fn</span> <span class="fn">parse_age</span>(s: &amp;<span class="ty">str</span>) -&gt; <span class="ty">Result</span>&lt;<span class="ty">u32</span>&gt; {
+    <span class="kw">let</span> n: <span class="ty">u32</span> = s.<span class="fn">parse</span>()
+        .<span class="fn">map_err</span>(|_| <span class="mac">anyhow!</span>(<span class="st">"'{}' is not a valid age"</span>, s))?;
+    <span class="kw">if</span> n &gt; <span class="nu">150</span> {
+        <span class="kw">return</span> <span class="ty">Err</span>(<span class="mac">anyhow!</span>(<span class="st">"age {} is unreasonably large"</span>, n));
+    }
+    <span class="ty">Ok</span>(n)
+}</code></pre>
+
+  <h2>2. bail! macro — early return with an error</h2>
+  <p><span class="pill">bail!</span> is shorthand for <span class="pill">return Err(anyhow!(...))</span>. Use it when you want to exit a function early with an error message.</p>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">use</span> anyhow::{<span class="ty">Result</span>, <span class="mac">bail</span>};
+
+<span class="kw">fn</span> <span class="fn">check_username</span>(name: &amp;<span class="ty">str</span>) -&gt; <span class="ty">Result</span>&lt;()&gt; {
+    <span class="kw">if</span> name.<span class="fn">is_empty</span>() {
+        <span class="mac">bail!</span>(<span class="st">"username cannot be empty"</span>);
+    }
+    <span class="kw">if</span> name.<span class="fn">len</span>() &gt; <span class="nu">32</span> {
+        <span class="mac">bail!</span>(<span class="st">"username '{}' exceeds 32 chars"</span>, name);
+    }
+    <span class="ty">Ok</span>(())
+}</code></pre>
+
+  <h2>3. ensure! macro — assert a condition or error</h2>
+  <p>Like <span class="pill">assert!</span> but returns an error instead of panicking. Perfect for validation.</p>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">use</span> anyhow::{<span class="ty">Result</span>, <span class="mac">ensure</span>};
+
+<span class="kw">fn</span> <span class="fn">divide</span>(a: <span class="ty">f64</span>, b: <span class="ty">f64</span>) -&gt; <span class="ty">Result</span>&lt;<span class="ty">f64</span>&gt; {
+    <span class="mac">ensure!</span>(b != <span class="nu">0.0</span>, <span class="st">"cannot divide by zero"</span>);
+    <span class="ty">Ok</span>(a / b)
+}</code></pre>
+
+  <div class="callout callout-tip"><strong>Quick rule</strong>Use <span class="pill">bail!</span> for conditional early returns. Use <span class="pill">ensure!</span> when you're checking a boolean condition. Use <span class="pill">anyhow!</span> when building the error value inline.</div>
+
+  <button class="next-btn" onclick="nav('result-type',null)">Next: The Result type →</button>
+</div>
+
+<!-- RESULT TYPE -->
+<div id="s-result-type" class="section">
+  <div class="breadcrumb">Core concepts › <span>The Result type</span></div>
+  <h1>anyhow::Result&lt;T&gt;</h1>
+  <p><span class="pill">anyhow::Result&lt;T&gt;</span> is just a type alias. It fixes the error type to <span class="pill">anyhow::Error</span> so you don't have to write it every time.</p>
+
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="cm">// What anyhow::Result is defined as internally:</span>
+<span class="kw">pub type</span> <span class="ty">Result</span>&lt;T, E = <span class="ty">Error</span>&gt; = std::result::<span class="ty">Result</span>&lt;T, E&gt;;
+
+<span class="cm">// So these are identical:</span>
+<span class="kw">fn</span> <span class="fn">foo</span>() -&gt; <span class="ty">Result</span>&lt;<span class="ty">String</span>&gt;                         <span class="cm">// anyhow::Result</span>
+<span class="kw">fn</span> <span class="fn">foo</span>() -&gt; std::result::<span class="ty">Result</span>&lt;<span class="ty">String</span>, anyhow::<span class="ty">Error</span>&gt;</code></pre>
+
+  <h2>anyhow::Error vs std</h2>
+  <table>
+    <tr><th>anyhow::Error</th><th>Box&lt;dyn std::error::Error&gt;</th></tr>
+    <tr><td>Ergonomic API with .context(), .downcast()</td><td>Manual conversions needed</td></tr>
+    <tr><td>Backtrace support built in</td><td>No built-in backtrace</td></tr>
+    <tr><td>1 pointer wide (optimized)</td><td>2 pointers (fat pointer)</td></tr>
+    <tr><td>Only usable in applications</td><td>Can be used in libraries</td></tr>
+  </table>
+
+  <div class="callout callout-warn"><strong>Important</strong><span class="pill">anyhow::Error</span> does NOT implement <span class="pill">std::error::Error</span> itself — you can't return it from a library. It's designed for application-level error reporting, not library APIs.</div>
+
+  <h2>Using it in main</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">use</span> anyhow::<span class="ty">Result</span>;
+
+<span class="kw">fn</span> <span class="fn">main</span>() -&gt; <span class="ty">Result</span>&lt;()&gt; {
+    <span class="kw">let</span> config = <span class="fn">load_config</span>(<span class="st">"config.toml"</span>)?;
+    <span class="fn">run</span>(config)?;
+    <span class="ty">Ok</span>(())
+}</code></pre>
+
+  <button class="next-btn" onclick="nav('question-mark',null)">Next: ? operator →</button>
+</div>
+
+<!-- QUESTION MARK -->
+<div id="s-question-mark" class="section">
+  <div class="breadcrumb">Core concepts › <span>? operator</span></div>
+  <h1>The ? operator</h1>
+  <p>The <span class="pill">?</span> operator is how errors propagate in Rust. When you put <span class="pill">?</span> after a <span class="pill">Result</span>, it either unwraps the <span class="pill">Ok</span> value or returns the <span class="pill">Err</span> early from the current function.</p>
+
+  <h2>How it works with anyhow</h2>
+  <p>The key insight: <span class="pill">?</span> automatically calls <span class="pill">From::from()</span> on the error. anyhow::Error implements <span class="pill">From&lt;E&gt;</span> for any E that implements <span class="pill">std::error::Error</span>. So any standard error type converts automatically.</p>
+
+  <div class="comparison">
+    <div class="cmp-box bad">
+      <div class="cmp-label">❌ without anyhow</div>
+      <pre><code style="font-family:var(--font-mono);font-size:12px;padding:.75rem;display:block;line-height:1.7"><span class="kw">fn</span> <span class="fn">read_number</span>(path: &amp;<span class="ty">str</span>)
+    -&gt; <span class="ty">Result</span>&lt;<span class="ty">u32</span>, <span class="ty">Box</span>&lt;<span class="kw">dyn</span> std::<span class="ty">Error</span>&gt;&gt;
+{
+    <span class="kw">let</span> s = fs::<span class="fn">read_to_string</span>(path)?;
+    <span class="kw">let</span> n = s.<span class="fn">trim</span>().<span class="fn">parse</span>::&lt;<span class="ty">u32</span>&gt;()?;
+    <span class="ty">Ok</span>(n)
+}</code></pre>
+    </div>
+    <div class="cmp-box good">
+      <div class="cmp-label">✅ with anyhow</div>
+      <pre><code style="font-family:var(--font-mono);font-size:12px;padding:.75rem;display:block;line-height:1.7"><span class="kw">use</span> anyhow::<span class="ty">Result</span>;
+
+<span class="kw">fn</span> <span class="fn">read_number</span>(path: &amp;<span class="ty">str</span>) -&gt; <span class="ty">Result</span>&lt;<span class="ty">u32</span>&gt; {
+    <span class="kw">let</span> s = fs::<span class="fn">read_to_string</span>(path)?;
+    <span class="kw">let</span> n = s.<span class="fn">trim</span>().<span class="fn">parse</span>::&lt;<span class="ty">u32</span>&gt;()?;
+    <span class="ty">Ok</span>(n)
+}</code></pre>
+    </div>
+  </div>
+
+  <h2>Multiple error types — where anyhow shines</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">use</span> anyhow::<span class="ty">Result</span>;
+<span class="kw">use</span> std::fs;
+
+<span class="kw">fn</span> <span class="fn">load_and_parse</span>(path: &amp;<span class="ty">str</span>) -&gt; <span class="ty">Result</span>&lt;<span class="ty">Vec</span>&lt;<span class="ty">String</span>&gt;&gt; {
+    <span class="cm">// io::Error — automatically converted by ?</span>
+    <span class="kw">let</span> content = fs::<span class="fn">read_to_string</span>(path)?;
+
+    <span class="cm">// serde_json::Error — also automatically converted by ?</span>
+    <span class="kw">let</span> items: <span class="ty">Vec</span>&lt;<span class="ty">String</span>&gt; = serde_json::<span class="fn">from_str</span>(&amp;content)?;
+
+    <span class="ty">Ok</span>(items)
+}
+
+<span class="cm">// Both io::Error and serde_json::Error convert to anyhow::Error
+// via the ? operator. No From impls needed. No enum variants needed.</span></code></pre>
+
+  <div class="callout callout-info"><strong>Mental model</strong>Think of <span class="pill">anyhow::Error</span> as a "type-erased box" that can hold any error. The <span class="pill">?</span> operator puts errors into that box automatically. Later you can open the box to inspect the specific error type (see Downcasting).</div>
+
+  <button class="next-btn" onclick="nav('context',null)">Next: Adding context →</button>
+</div>
+
+<!-- CONTEXT -->
+<div id="s-context" class="section">
+  <div class="breadcrumb">Core concepts › <span>Adding context</span></div>
+  <h1>Adding context to errors</h1>
+  <p>This is one of anyhow's most powerful features. Instead of just seeing <em>"No such file or directory"</em>, you can add layers of context so errors read like a story.</p>
+
+  <h2>.context() — add a static string</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">use</span> anyhow::{<span class="ty">Context</span>, <span class="ty">Result</span>};
+<span class="kw">use</span> std::fs;
+
+<span class="kw">fn</span> <span class="fn">load_config</span>(path: &amp;<span class="ty">str</span>) -&gt; <span class="ty">Result</span>&lt;<span class="ty">String</span>&gt; {
+    fs::<span class="fn">read_to_string</span>(path)
+        .<span class="fn">context</span>(<span class="st">"failed to read config file"</span>)
+}</code></pre>
+
+  <p>Now instead of just <em>"No such file or directory (os error 2)"</em>, the error message becomes:</p>
+  <div class="callout callout-err"><strong>Error output</strong>failed to read config file: No such file or directory (os error 2)</div>
+
+  <h2>.with_context() — lazy context</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">fn</span> <span class="fn">load_config</span>(path: &amp;<span class="ty">str</span>) -&gt; <span class="ty">Result</span>&lt;<span class="ty">String</span>&gt; {
+    fs::<span class="fn">read_to_string</span>(path)
+        .<span class="fn">with_context</span>(|| <span class="fn">format!</span>(<span class="st">"failed to read config from '{}'"</span>, path))
+}</code></pre>
+
+  <h2>Layering context up the call stack</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">fn</span> <span class="fn">read_file</span>(path: &amp;<span class="ty">str</span>) -&gt; <span class="ty">Result</span>&lt;<span class="ty">String</span>&gt; {
+    fs::<span class="fn">read_to_string</span>(path)
+        .<span class="fn">with_context</span>(|| <span class="fn">format!</span>(<span class="st">"could not read '{}'"</span>, path))
+}
+
+<span class="kw">fn</span> <span class="fn">parse_config</span>(path: &amp;<span class="ty">str</span>) -&gt; <span class="ty">Result</span>&lt;<span class="ty">Config</span>&gt; {
+    <span class="kw">let</span> raw = <span class="fn">read_file</span>(path)
+        .<span class="fn">context</span>(<span class="st">"failed to load configuration"</span>)?;
+    <span class="cm">// parse raw...</span>
+}
+
+<span class="kw">fn</span> <span class="fn">main</span>() -&gt; <span class="ty">Result</span>&lt;()&gt; {
+    <span class="fn">parse_config</span>(<span class="st">"app.toml"</span>)
+        .<span class="fn">context</span>(<span class="st">"application startup failed"</span>)?;
+    <span class="ty">Ok</span>(())
+}
+
+<span class="cm">// Error output:
+// Error: application startup failed
+//
+// Caused by:
+//     0: failed to load configuration
+//     1: could not read 'app.toml'
+//     2: No such file or directory (os error 2)</span></code></pre>
+
+  <div class="callout callout-tip"><strong>Best practice</strong>Add context at each level describing what the <em>function was trying to do</em>, not what went wrong. The underlying error already says what went wrong. Your context says why you were doing it.</div>
+
+  <button class="next-btn" onclick="nav('downcasting',null)">Next: Downcasting errors →</button>
+</div>
+
+<!-- DOWNCASTING -->
+<div id="s-downcasting" class="section">
+  <div class="breadcrumb">Intermediate › <span>Downcasting errors</span></div>
+  <h1>Downcasting errors</h1>
+  <p>Sometimes you want to <em>recover</em> from a specific error type. anyhow lets you "open the box" and inspect what's inside.</p>
+
+  <h2>downcast_ref — inspect without consuming</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">use</span> anyhow::<span class="ty">Result</span>;
+<span class="kw">use</span> std::{fs, io};
+
+<span class="kw">fn</span> <span class="fn">read_or_default</span>(path: &amp;<span class="ty">str</span>) -&gt; <span class="ty">Result</span>&lt;<span class="ty">String</span>&gt; {
+    <span class="kw">match</span> fs::<span class="fn">read_to_string</span>(path) {
+        <span class="ty">Ok</span>(s) =&gt; <span class="ty">Ok</span>(s),
+        <span class="ty">Err</span>(e) =&gt; {
+            <span class="kw">if let</span> <span class="ty">Some</span>(io_err) = e.<span class="fn">downcast_ref</span>::&lt;io::<span class="ty">Error</span>&gt;() {
+                <span class="kw">if</span> io_err.<span class="fn">kind</span>() == io::ErrorKind::NotFound {
+                    <span class="kw">return</span> <span class="ty">Ok</span>(<span class="ty">String</span>::<span class="fn">new</span>());
+                }
+            }
+            <span class="ty">Err</span>(e.<span class="fn">into</span>())
+        }
+    }
+}</code></pre>
+
+  <h2>downcast — consume and get the original type</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">fn</span> <span class="fn">handle_error</span>(e: anyhow::<span class="ty">Error</span>) {
+    <span class="kw">match</span> e.<span class="fn">downcast</span>::&lt;io::<span class="ty">Error</span>&gt;() {
+        <span class="ty">Ok</span>(io_err) =&gt; <span class="mac">eprintln!</span>(<span class="st">"IO problem: {}"</span>, io_err),
+        <span class="ty">Err</span>(other) =&gt; <span class="mac">eprintln!</span>(<span class="st">"Other error: {}"</span>, other),
+    }
+}</code></pre>
+
+  <h2>is — quick type check</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">if</span> e.<span class="fn">is</span>::&lt;io::<span class="ty">Error</span>&gt;() {
+    <span class="mac">println!</span>(<span class="st">"it's an IO error"</span>);
+}</code></pre>
+
+  <div class="callout callout-warn"><strong>Context and downcasting</strong>When you call <span class="pill">.context()</span>, the original error is wrapped. You can still downcast to the original type — anyhow searches the full error chain.</div>
+
+  <button class="next-btn" onclick="nav('custom-errors',null)">Next: Custom error types →</button>
+</div>
+
+<!-- CUSTOM ERRORS -->
+<div id="s-custom-errors" class="section">
+  <div class="breadcrumb">Intermediate › <span>Custom error types</span></div>
+  <h1>Custom error types with anyhow</h1>
+  <p>Sometimes you need named, structured error variants. You can define your own error types and use them alongside anyhow.</p>
+
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">use</span> std::fmt;
+<span class="kw">use</span> anyhow::{<span class="ty">Result</span>, <span class="ty">Context</span>};
+
+<span class="kw">#[derive(Debug)]</span>
+<span class="kw">pub enum</span> <span class="ty">AppError</span> {
+    ConfigMissing,
+    InvalidPort(u16),
+    DbConnectionFailed(<span class="ty">String</span>),
+}
+
+<span class="kw">impl</span> fmt::<span class="ty">Display</span> <span class="kw">for</span> <span class="ty">AppError</span> {
+    <span class="kw">fn</span> <span class="fn">fmt</span>(&amp;self, f: &amp;<span class="kw">mut</span> fmt::<span class="ty">Formatter</span>) -&gt; fmt::<span class="ty">Result</span> {
+        <span class="kw">match</span> self {
+            <span class="ty">AppError</span>::ConfigMissing =&gt; <span class="fn">write!</span>(f, <span class="st">"config file not found"</span>),
+            <span class="ty">AppError</span>::InvalidPort(p) =&gt; <span class="fn">write!</span>(f, <span class="st">"port {} is not valid"</span>, p),
+            <span class="ty">AppError</span>::DbConnectionFailed(s) =&gt; <span class="fn">write!</span>(f, <span class="st">"db error: {}"</span>, s),
+        }
+    }
+}
+
+<span class="kw">impl</span> std::error::<span class="ty">Error</span> <span class="kw">for</span> <span class="ty">AppError</span> {}
+
+<span class="cm">// Use it with anyhow — ? converts it automatically</span>
+<span class="kw">fn</span> <span class="fn">connect</span>(port: u16) -&gt; <span class="ty">Result</span>&lt;()&gt; {
+    <span class="kw">if</span> port &lt; <span class="nu">1024</span> {
+        <span class="kw">return</span> <span class="ty">Err</span>(<span class="ty">AppError</span>::InvalidPort(port).<span class="fn">into</span>());
+    }
+    <span class="ty">Ok</span>(())
+}</code></pre>
+
+  <div class="callout callout-info"><strong>Better approach: use thiserror</strong>Writing Display + Error manually is tedious. The <span class="pill">thiserror</span> crate by the same author auto-derives them. See the next section.</div>
+
+  <button class="next-btn" onclick="nav('chaining',null)">Next: Error chaining →</button>
+</div>
+
+<!-- CHAINING -->
+<div id="s-chaining" class="section">
+  <div class="breadcrumb">Intermediate › <span>Error chaining</span></div>
+  <h1>Error chaining</h1>
+
+  <h2>Iterating the error chain</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">fn</span> <span class="fn">print_chain</span>(e: &amp;anyhow::<span class="ty">Error</span>) {
+    <span class="mac">eprintln!</span>(<span class="st">"Error: {}"</span>, e);
+    <span class="kw">for</span> cause <span class="kw">in</span> e.<span class="fn">chain</span>().<span class="fn">skip</span>(<span class="nu">1</span>) {
+        <span class="mac">eprintln!</span>(<span class="st">"Caused by: {}"</span>, cause);
+    }
+}</code></pre>
+
+  <h2>The {:?} debug format</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">if let</span> <span class="ty">Err</span>(e) = <span class="fn">run</span>() {
+    <span class="mac">eprintln!</span>(<span class="st">"{:?}"</span>, e);
+    <span class="cm">// Error: application startup failed
+    //
+    // Caused by:
+    //     0: failed to read config
+    //     1: No such file or directory (os error 2)
+    //
+    // Stack backtrace (if RUST_BACKTRACE=1):
+    //    0: ...</span>
+}</code></pre>
+
+  <div class="callout callout-tip"><strong>Tip</strong>In production CLIs, use <span class="pill">{:#}</span> for a single-line chain, or <span class="pill">{:?}</span> for the full multi-line debug view with backtrace.</div>
+
+  <button class="next-btn" onclick="nav('thiserror',null)">Next: anyhow + thiserror →</button>
+</div>
+
+<!-- THISERROR -->
+<div id="s-thiserror" class="section">
+  <div class="breadcrumb">Advanced › <span>anyhow + thiserror</span></div>
+  <h1>anyhow + thiserror — the classic combo</h1>
+  <p>This is the recommended pattern for serious Rust projects: <span class="pill">thiserror</span> for defining your domain error types, <span class="pill">anyhow</span> for propagating them in application code.</p>
+
+  <h2>Cargo.toml</h2>
+  <div class="code-header"><span class="code-lang">toml</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code>[dependencies]
+<span class="ty">anyhow</span> = <span class="st">"1"</span>
+<span class="ty">thiserror</span> = <span class="st">"1"</span></code></pre>
+
+  <h2>Define domain errors with thiserror</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">use</span> thiserror::<span class="ty">Error</span>;
+
+<span class="kw">#[derive(Debug, Error)]</span>
+<span class="kw">pub enum</span> <span class="ty">DbError</span> {
+    <span class="kw">#[error("connection refused to {host}:{port}")]</span>
+    ConnectionRefused { host: <span class="ty">String</span>, port: u16 },
+
+    <span class="kw">#[error("query failed: {0}")]</span>
+    QueryFailed(<span class="ty">String</span>),
+
+    <span class="kw">#[error("row not found with id {0}")]</span>
+    NotFound(u64),
+
+    <span class="kw">#[error(transparent)]</span>
+    Io(<span class="kw">#[from]</span> std::io::<span class="ty">Error</span>),
+}</code></pre>
+
+  <h2>Use anyhow in the application layer</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">use</span> anyhow::{<span class="ty">Context</span>, <span class="ty">Result</span>};
+
+<span class="kw">fn</span> <span class="fn">get_user_name</span>(db: &amp;<span class="ty">Db</span>, id: u64) -&gt; <span class="ty">Result</span>&lt;<span class="ty">String</span>&gt; {
+    <span class="kw">let</span> row = db.<span class="fn">find_user</span>(id)
+        .<span class="fn">with_context</span>(|| <span class="fn">format!</span>(<span class="st">"user {} not found"</span>, id))?;
+    <span class="ty">Ok</span>(row.name)
+}
+
+<span class="cm">// Still downcast to DbError if needed:</span>
+<span class="kw">if let</span> <span class="ty">Some</span>(db_err) = err.<span class="fn">downcast_ref</span>::&lt;<span class="ty">DbError</span>&gt;() {
+    <span class="kw">if</span> <span class="fn">matches!</span>(db_err, <span class="ty">DbError</span>::NotFound(_)) {
+        <span class="cm">// Handle 404 case</span>
+    }
+}</code></pre>
+
+  <div class="callout callout-info"><strong>Rule of thumb</strong>Use <strong style="color:var(--orange)">thiserror</strong> in library crates and domain modules — structured and matchable. Use <strong style="color:var(--orange)">anyhow</strong> in application code (main, CLI, server handlers) — convenience over structure.</div>
+
+  <button class="next-btn" onclick="nav('libs-vs-bins',null)">Next: Libs vs binaries →</button>
+</div>
+
+<!-- LIBS VS BINS -->
+<div id="s-libs-vs-bins" class="section">
+  <div class="breadcrumb">Advanced › <span>Libs vs binaries</span></div>
+  <h1>When not to use anyhow</h1>
+  <p>anyhow belongs in <em>application</em> code, not <em>library</em> code.</p>
+
+  <h2>The problem with anyhow in libraries</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="cm">// If your library returns anyhow::Error, callers CAN'T do this:</span>
+<span class="kw">match</span> your_lib::<span class="fn">do_thing</span>() {
+    <span class="ty">Ok</span>(_) =&gt; {},
+    <span class="ty">Err</span>(e) <span class="kw">if</span> e.<span class="fn">is</span>::&lt;NetworkError&gt;() =&gt; { <span class="cm">/* retry */</span> },
+    <span class="ty">Err</span>(e) =&gt; <span class="kw">return</span> <span class="ty">Err</span>(e),
+}
+<span class="cm">// Callers have to use downcast_ref, which is fragile and unexpected.</span></code></pre>
+
+  <h2>The right split</h2>
+  <table>
+    <tr><th>Code type</th><th>Error approach</th><th>Why</th></tr>
+    <tr><td>Library crate (lib.rs)</td><td>Custom enum + thiserror</td><td>Callers need to match on variants</td></tr>
+    <tr><td>Application crate (main.rs, handlers)</td><td>anyhow::Result</td><td>Convenience, no callers above you</td></tr>
+    <tr><td>Internal module (not public API)</td><td>Either, prefer anyhow</td><td>Convenience is fine internally</td></tr>
+  </table>
+
+  <div class="callout callout-tip"><strong>Rule</strong>If the function is <span class="pill">pub</span> in a library crate — use a typed error. If it's in a binary or an internal function — use anyhow. When in doubt: "does the caller need to match on the error variant?" If yes → typed. If no → anyhow.</div>
+
+  <button class="next-btn" onclick="nav('patterns',null)">Next: Real-world patterns →</button>
+</div>
+
+<!-- PATTERNS -->
+<div id="s-patterns" class="section">
+  <div class="breadcrumb">Advanced › <span>Real-world patterns</span></div>
+  <h1>Real-world patterns</h1>
+
+  <h2>Pattern 1: CLI with anyhow in main</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">use</span> anyhow::{<span class="ty">Context</span>, <span class="ty">Result</span>};
+<span class="kw">use</span> std::{env, fs};
+
+<span class="kw">fn</span> <span class="fn">main</span>() -&gt; <span class="ty">Result</span>&lt;()&gt; {
+    <span class="kw">let</span> path = env::<span class="fn">args</span>().<span class="fn">nth</span>(<span class="nu">1</span>)
+        .<span class="fn">context</span>(<span class="st">"usage: mytool &lt;path&gt;"</span>)?;
+
+    <span class="kw">let</span> content = fs::<span class="fn">read_to_string</span>(&amp;path)
+        .<span class="fn">with_context</span>(|| <span class="fn">format!</span>(<span class="st">"could not read '{}'"</span>, path))?;
+
+    <span class="mac">println!</span>(<span class="st">"Lines: {}"</span>, content.<span class="fn">lines</span>().<span class="fn">count</span>());
+    <span class="ty">Ok</span>(())
+}</code></pre>
+
+  <h2>Pattern 2: Axum handler error wrapper</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">struct</span> <span class="ty">AppError</span>(anyhow::<span class="ty">Error</span>);
+
+<span class="kw">impl</span> IntoResponse <span class="kw">for</span> <span class="ty">AppError</span> {
+    <span class="kw">fn</span> <span class="fn">into_response</span>(self) -&gt; <span class="ty">Response</span> {
+        (<span class="ty">StatusCode</span>::INTERNAL_SERVER_ERROR,
+         <span class="fn">format!</span>(<span class="st">"Error: {}"</span>, self.<span class="nu">0</span>)).<span class="fn">into_response</span>()
+    }
+}
+
+<span class="kw">impl</span>&lt;E: Into&lt;anyhow::<span class="ty">Error</span>&gt;&gt; From&lt;E&gt; <span class="kw">for</span> <span class="ty">AppError</span> {
+    <span class="kw">fn</span> <span class="fn">from</span>(e: E) -&gt; Self { <span class="ty">AppError</span>(e.<span class="fn">into</span>()) }
+}
+
+<span class="kw">async fn</span> <span class="fn">get_user</span>(<span class="ty">Path</span>(id): <span class="ty">Path</span>&lt;u64&gt;) -&gt; <span class="ty">Result</span>&lt;<span class="ty">Json</span>&lt;<span class="ty">User</span>&gt;, <span class="ty">AppError</span>&gt; {
+    <span class="kw">let</span> user = <span class="fn">fetch_user</span>(id).<span class="fn">await</span>
+        .<span class="fn">context</span>(<span class="st">"failed to fetch user"</span>)?;
+    <span class="ty">Ok</span>(<span class="ty">Json</span>(user))
+}</code></pre>
+
+  <h2>Pattern 3: Error logging</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="kw">fn</span> <span class="fn">run_task</span>() {
+    <span class="kw">if let</span> <span class="ty">Err</span>(e) = <span class="fn">do_work</span>() {
+        <span class="mac">tracing::error!</span>(error = <span class="fn">format!</span>(<span class="st">"{:?}"</span>, e), <span class="st">"task failed"</span>);
+    }
+}</code></pre>
+
+  <div class="callout callout-tip"><strong>Formatting summary</strong><span class="pill">"{}"</span> → top-level message only &nbsp;·&nbsp; <span class="pill">"{:#}"</span> → full chain, single line &nbsp;·&nbsp; <span class="pill">"{:?}"</span> → full chain + backtrace</div>
+
+  <button class="next-btn" onclick="nav('api-ref',null)">Next: API cheatsheet →</button>
+</div>
+
+<!-- API REF -->
+<div id="s-api-ref" class="section">
+  <div class="breadcrumb">Reference › <span>API cheatsheet</span></div>
+  <h1>API cheatsheet</h1>
+
+  <h2>Macros</h2>
+  <table>
+    <tr><th>Macro</th><th>What it does</th></tr>
+    <tr><td>anyhow!(msg)</td><td>Creates an anyhow::Error from a message or format string</td></tr>
+    <tr><td>bail!(msg)</td><td>Equivalent to return Err(anyhow!(msg))</td></tr>
+    <tr><td>ensure!(cond, msg)</td><td>Returns Err(anyhow!(msg)) if cond is false</td></tr>
+  </table>
+
+  <h2>Error methods</h2>
+  <table>
+    <tr><th>Method</th><th>What it does</th></tr>
+    <tr><td>.context(msg)</td><td>Wraps error with a static context message</td></tr>
+    <tr><td>.with_context(|| ...)</td><td>Same, but lazy — closure only runs on error</td></tr>
+    <tr><td>.downcast::&lt;T&gt;()</td><td>Consume error, returns Result&lt;T, Error&gt;</td></tr>
+    <tr><td>.downcast_ref::&lt;T&gt;()</td><td>Borrow error as &amp;T if that's the inner type</td></tr>
+    <tr><td>.downcast_mut::&lt;T&gt;()</td><td>Borrow error as &amp;mut T</td></tr>
+    <tr><td>.is::&lt;T&gt;()</td><td>Returns true if inner type is T</td></tr>
+    <tr><td>.chain()</td><td>Iterator over the error chain (all causes)</td></tr>
+    <tr><td>.root_cause()</td><td>The innermost error in the chain</td></tr>
+    <tr><td>.backtrace()</td><td>Optional backtrace (if captured)</td></tr>
+  </table>
+
+  <h2>Imports quick-reference</h2>
+  <div class="code-header"><span class="code-lang">rust</span><button class="copy-btn" onclick="copy(this)">copy</button></div>
+  <pre><code><span class="cm">// Covers 80% of use cases</span>
+<span class="kw">use</span> anyhow::<span class="ty">Result</span>;
+
+<span class="cm">// Add Context for .context() and .with_context()</span>
+<span class="kw">use</span> anyhow::{<span class="ty">Context</span>, <span class="ty">Result</span>};
+
+<span class="cm">// Full import</span>
+<span class="kw">use</span> anyhow::{<span class="ty">Context</span>, <span class="ty">Result</span>, <span class="ty">Error</span>, <span class="mac">anyhow</span>, <span class="mac">bail</span>, <span class="mac">ensure</span>};</code></pre>
+
+  <h2>Format strings</h2>
+  <table>
+    <tr><th>Format</th><th>Output</th></tr>
+    <tr><td>"{}"</td><td>Just the top-level message</td></tr>
+    <tr><td>"{:#}"</td><td>Full chain, colon-separated, single line</td></tr>
+    <tr><td>"{:?}"</td><td>Full chain, multi-line, with backtrace if available</td></tr>
+    <tr><td>"{:#?}"</td><td>Pretty-printed debug, good for logging</td></tr>
+  </table>
+
+  <div class="callout callout-tip"><strong>Done!</strong>You now know everything you need to use anyhow in real Rust projects. The most important things: always add .context(), know when NOT to use it in libraries, and combine with thiserror for domain errors.</div>
+</div>
+
+</main>
+</div>
+
+<script>
+function nav(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const sec = document.getElementById('s-' + id);
+  if (sec) sec.classList.add('active');
+  if (el) el.classList.add('active');
+  document.querySelector('.main').scrollTop = 0;
+}
+
+function copy(btn) {
+  const pre = btn.closest('.code-header').nextElementSibling;
+  const text = pre ? pre.innerText : '';
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 1500);
+  });
+}
+</script>
+</body>
+</html>
