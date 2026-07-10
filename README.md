@@ -96,4 +96,16 @@ The dark terminal aesthetic and monospace code blocks are intentional — built 
 
 ---
 
+## warning
+
+I used AI as a learning assistant to explain concepts I found difficult in the official documentation, then verified examples and behavior against the official anyhow documentation and by running the code myself.
+
+---
+
+## Help
+
+If you find any mistakes or outdated information, please open an issue or submit a pull request.
+
+---
+
 *Part of an ongoing series of self-contained crate tutorials — built to extend the official Rust Book with the practical crates (`clap`, `anyhow`, and beyond) that real projects actually depend on.*
